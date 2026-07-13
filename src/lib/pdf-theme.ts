@@ -93,19 +93,19 @@ export const drawMoonStatStrip = (
 
   stats.forEach((stat, index) => {
     const x = 14 + index * (width + gap);
-    const fill =
+    const fill: readonly [number, number, number] =
       stat.tone === 'accent'
         ? moonPdfColors.panel
         : stat.tone === 'good'
-          ? [236, 253, 245] as const
+          ? [236, 253, 245]
           : stat.tone === 'warn'
-            ? [255, 247, 237] as const
+            ? [255, 247, 237]
             : stat.tone === 'danger'
-              ? [254, 242, 242] as const
-              : [255, 255, 255] as const;
+              ? [254, 242, 242]
+              : [255, 255, 255];
 
     doc.setDrawColor(...moonPdfColors.border);
-    doc.setFillColor(...fill);
+    doc.setFillColor(fill[0], fill[1], fill[2]);
     doc.roundedRect(x, startY, width, height, 3, 3, 'FD');
 
     doc.setFont('helvetica', 'normal');
@@ -145,20 +145,20 @@ export const drawMoonNotesBox = (doc: jsPDF, notes: string, startY: number) => {
 
 export const moonTableTheme = {
   headStyles: {
-    fillColor: [...moonPdfColors.ink] as number[],
-    textColor: [255, 255, 255] as number[],
+    fillColor: [...moonPdfColors.ink] as [number, number, number],
+    textColor: [255, 255, 255] as [number, number, number],
     fontStyle: 'bold' as const,
     fontSize: 9,
   },
   bodyStyles: {
-    textColor: [...moonPdfColors.ink] as number[],
+    textColor: [...moonPdfColors.ink] as [number, number, number],
     fontSize: 9,
     cellPadding: 3,
-    lineColor: [...moonPdfColors.border] as number[],
+    lineColor: [...moonPdfColors.border] as [number, number, number],
     lineWidth: 0.2,
   },
   alternateRowStyles: {
-    fillColor: [251, 250, 255] as number[],
+    fillColor: [251, 250, 255] as [number, number, number],
   },
   margin: { left: 14, right: 14 },
 };

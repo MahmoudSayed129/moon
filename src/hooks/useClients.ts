@@ -68,6 +68,7 @@ const mapOrder = (row: any): Order => {
     employeeCode: row.employee_code || undefined,
     soldByAuthId: row.sold_by_auth_id || undefined,
     subtotal: Number(row.subtotal),
+    discountAmount: Number(row.discount_amount || 0),
     commissionRate: Number(row.commission_rate || 0),
     commissionAmount: Number(row.commission_amount || 0),
     totalAmount: Number(row.total_amount),

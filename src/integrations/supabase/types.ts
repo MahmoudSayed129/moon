@@ -42,28 +42,37 @@ export type Database = {
         Row: {
           created_at: string
           email: string | null
+          has_returns: boolean
           id: string
+          last_returned_at: string | null
           name: string
           notes: string | null
           phone: string | null
+          returns_count: number
           updated_at: string
         }
         Insert: {
           created_at?: string
           email?: string | null
+          has_returns?: boolean
           id?: string
+          last_returned_at?: string | null
           name: string
           notes?: string | null
           phone?: string | null
+          returns_count?: number
           updated_at?: string
         }
         Update: {
           created_at?: string
           email?: string | null
+          has_returns?: boolean
           id?: string
+          last_returned_at?: string | null
           name?: string
           notes?: string | null
           phone?: string | null
+          returns_count?: number
           updated_at?: string
         }
         Relationships: []
@@ -125,6 +134,7 @@ export type Database = {
           product_id: string | null
           product_name: string
           quantity: number
+          returned_quantity: number
           unit_price: number
         }
         Insert: {
@@ -136,6 +146,7 @@ export type Database = {
           product_id?: string | null
           product_name: string
           quantity: number
+          returned_quantity?: number
           unit_price?: number
         }
         Update: {
@@ -147,6 +158,7 @@ export type Database = {
           product_id?: string | null
           product_name?: string
           quantity?: number
+          returned_quantity?: number
           unit_price?: number
         }
         Relationships: [
@@ -166,6 +178,118 @@ export type Database = {
           },
         ]
       }
+      order_return_items: {
+        Row: {
+          created_at: string
+          id: string
+          line_total: number
+          order_item_id: string
+          product_barcode: string
+          product_id: string | null
+          product_name: string
+          quantity: number
+          return_id: string
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          line_total?: number
+          order_item_id: string
+          product_barcode: string
+          product_id?: string | null
+          product_name: string
+          quantity: number
+          return_id: string
+          unit_price?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          line_total?: number
+          order_item_id?: string
+          product_barcode?: string
+          product_id?: string | null
+          product_name?: string
+          quantity?: number
+          return_id?: string
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_return_items_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "order_returns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_return_items_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: false
+            referencedRelation: "order_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_return_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_returns: {
+        Row: {
+          client_id: string | null
+          commission_returned: number
+          created_at: string
+          id: string
+          order_id: string
+          processed_by_auth_id: string | null
+          reason: string | null
+          subtotal_returned: number
+          total_returned: number
+        }
+        Insert: {
+          client_id?: string | null
+          commission_returned?: number
+          created_at?: string
+          id?: string
+          order_id: string
+          processed_by_auth_id?: string | null
+          reason?: string | null
+          subtotal_returned?: number
+          total_returned?: number
+        }
+        Update: {
+          client_id?: string | null
+          commission_returned?: number
+          created_at?: string
+          id?: string
+          order_id?: string
+          processed_by_auth_id?: string | null
+          reason?: string | null
+          subtotal_returned?: number
+          total_returned?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_returns_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_returns_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           client_id: string | null
@@ -175,9 +299,19 @@ export type Database = {
           discount_amount: number
           employee_code: string | null
           employee_id: string | null
+          has_return: boolean
           id: string
           invoice_number: string
+          last_returned_at: string | null
+          net_commission_amount: number
+          net_subtotal: number
+          net_total_amount: number
           notes: string | null
+          return_count: number
+          return_status: string
+          returned_commission_amount: number
+          returned_subtotal: number
+          returned_total_amount: number
           sold_by_auth_id: string | null
           subtotal: number
           total_amount: number
@@ -190,9 +324,19 @@ export type Database = {
           discount_amount?: number
           employee_code?: string | null
           employee_id?: string | null
+          has_return?: boolean
           id?: string
           invoice_number: string
+          last_returned_at?: string | null
+          net_commission_amount?: number
+          net_subtotal?: number
+          net_total_amount?: number
           notes?: string | null
+          return_count?: number
+          return_status?: string
+          returned_commission_amount?: number
+          returned_subtotal?: number
+          returned_total_amount?: number
           sold_by_auth_id?: string | null
           subtotal?: number
           total_amount?: number
@@ -205,9 +349,19 @@ export type Database = {
           discount_amount?: number
           employee_code?: string | null
           employee_id?: string | null
+          has_return?: boolean
           id?: string
           invoice_number?: string
+          last_returned_at?: string | null
+          net_commission_amount?: number
+          net_subtotal?: number
+          net_total_amount?: number
           notes?: string | null
+          return_count?: number
+          return_status?: string
+          returned_commission_amount?: number
+          returned_subtotal?: number
+          returned_total_amount?: number
           sold_by_auth_id?: string | null
           subtotal?: number
           total_amount?: number
@@ -401,6 +555,10 @@ export type Database = {
       get_user_role: {
         Args: { user_id: string }
         Returns: Database["public"]["Enums"]["user_role"]
+      }
+      process_order_return: {
+        Args: { p_order_id: string; p_items: Json; p_reason?: string | null }
+        Returns: Json
       }
     }
     Enums: {

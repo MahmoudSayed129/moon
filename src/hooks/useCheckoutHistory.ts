@@ -10,6 +10,7 @@ export interface CheckoutHistoryOrder {
   employeeName: string;
   employeeCode?: string;
   subtotal: number;
+  discountAmount: number;
   commissionRate: number;
   commissionAmount: number;
   totalAmount: number;
@@ -68,6 +69,7 @@ const mapOrder = (row: any): CheckoutHistoryOrder => {
     employeeName: row.users?.username || 'No employee',
     employeeCode: row.employee_code || undefined,
     subtotal: Number(row.subtotal),
+    discountAmount: Number(row.discount_amount || 0),
     commissionRate: Number(row.commission_rate || 0),
     commissionAmount: Number(row.commission_amount || 0),
     totalAmount: Number(row.total_amount),

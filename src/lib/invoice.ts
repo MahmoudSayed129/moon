@@ -300,7 +300,7 @@ export const buildInvoicePdf = (payload: InvoicePayload) => {
       head: [['Return Date', 'Reason', 'Items', 'Returned Total']],
       headStyles: {
         ...moonTableTheme.headStyles,
-        fillColor: [...moonPdfColors.accentDark] as number[],
+        fillColor: [...moonPdfColors.accentDark] as [number, number, number],
       },
       body: (payload.returns || []).map((entry) => [
         new Date(entry.createdAt).toLocaleDateString(),

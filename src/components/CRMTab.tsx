@@ -358,6 +358,11 @@ const CRMTab = () => {
                             <div className="text-lg font-semibold text-gray-900">
                               {formatEGP(order.netTotalAmount || order.totalAmount)}
                             </div>
+                            {(order.discountAmount || 0) > 0 && (
+                              <div className="text-sm text-emerald-700">
+                                خصم {formatEGP(order.discountAmount || 0)}
+                              </div>
+                            )}
                             {(order.returnedTotalAmount || 0) > 0 && (
                               <div className="text-sm text-blue-700">
                                 المرتجع {formatEGP(order.returnedTotalAmount || 0)}

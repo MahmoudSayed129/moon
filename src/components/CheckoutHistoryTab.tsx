@@ -519,6 +519,14 @@ const CheckoutHistoryTab = ({ onProcessReturn }: CheckoutHistoryTabProps) => {
                       المجموع قبل الخصم:{' '}
                       <span className="font-medium">{formatEGP(order.subtotal)}</span>
                     </div>
+                    {order.discountAmount > 0 && (
+                      <div>
+                        الخصم:{' '}
+                        <span className="font-medium text-emerald-700">
+                          - {formatEGP(order.discountAmount)}
+                        </span>
+                      </div>
+                    )}
                     {order.returnedTotalAmount > 0 && (
                       <div>
                         المرتجع:{' '}
@@ -550,6 +558,7 @@ const CheckoutHistoryTab = ({ onProcessReturn }: CheckoutHistoryTabProps) => {
                             invoiceNumber: order.invoiceNumber,
                             createdAt: order.createdAt,
                             subtotal: order.subtotal,
+                            discountAmount: order.discountAmount,
                             totalAmount: order.totalAmount,
                             returnedTotalAmount: order.returnedTotalAmount,
                             netTotalAmount: order.netTotalAmount,
