@@ -1,8 +1,68 @@
-
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { HistoryRow, ProductRow, SaleRow, Tables, mutate, newId, select } from '@/lib/local-db';
+import { addHistoryRow, checkoutOrder, processOrderReturn } from '@/lib/store-operations';
 import { CheckoutResult, Product, HistoryEntry, Sale, ProcessReturnPayload, StockLocation } from '@/types';
 import { useAuth } from '@/hooks/useAuth';
+
+const mapProduct = (
+  product: ProductRow,
+  categoryNames: Map<string, string>,
+  traderNames: Map<string, string>
+): Product => ({
+  id: product.id,
+  name: product.name,
+  barcode: product.barcode,
+  quantity: product.quantity,
+  warehouseQuantity: Number(product.warehouse_quantity ?? 0),
+  price: Number(product.price),
+  category: (product.category && categoryNames.get(product.category)) || 'Uncategorized',
+  categoryId: product.category || undefined,
+  trader: (product.trader_id && traderNames.get(product.trader_id)) || undefined,
+  traderId: product.trader_id || undefined,
+  costPrice: product.cost_price !== null && product.cost_price !== undefined
+    ? Number(product.cost_price)
+    : undefined,
+  description: product.description || '',
+  size: product.size || '',
+  image: product.image || '',
+  dateAdded: product.date_added,
+  lastUpdated: product.last_updated
+});
+
+const mapHistory = (entry: HistoryRow): HistoryEntry => ({
+  id: entry.id,
+  productId: entry.product_id || '',
+  productName: entry.product_name,
+  barcode: entry.barcode,
+  operation: entry.operation,
+  location: entry.location || 'store',
+  quantity: entry.quantity,
+  date: entry.date,
+  time: entry.time,
+  createdAt: entry.created_at || undefined,
+});
+
+const mapSale = (sale: SaleRow): Sale => ({
+  id: sale.id,
+  productId: sale.product_id || '',
+  productName: sale.product_name,
+  quantity: sale.quantity,
+  unitPrice: Number(sale.unit_price),
+  totalAmount: Number(sale.total_amount),
+  saleDate: sale.sale_date
+});
+
+const findProduct = (tables: Tables, id: string) => {
+  const product = tables.products.find((entry) => entry.id === id);
+  if (!product) throw new Error('المنتج مش موجود');
+  return product;
+};
+
+const assertUniqueBarcode = (tables: Tables, barcode: string, ignoreId?: string) => {
+  if (tables.products.some((product) => product.barcode === barcode && product.id !== ignoreId)) {
+    throw new Error('الباركود ده مستخدم لمنتج تاني');
+  }
+};
 
 export const useInventory = () => {
   const { authState } = useAuth();
@@ -11,21 +71,40 @@ export const useInventory = () => {
   const [sales, setSales] = useState<Sale[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load data from Supabase on mount
+  // Load data from the local store once logged in
   useEffect(() => {
     if (authState.isAuthenticated) {
       loadAllData();
     }
   }, [authState.isAuthenticated]);
 
+  // Re-read every table this hook exposes. Local reads are instant, so writes
+  // just call this instead of patching React state by hand.
+  const syncFromStore = () => {
+    const categoryNames = new Map(select('categories').map((row) => [row.id, row.name]));
+    const traderNames = new Map(select('traders').map((row) => [row.id, row.name]));
+
+    setProducts(
+      select('products')
+        .sort((a, b) => b.date_added.localeCompare(a.date_added))
+        .map((product) => mapProduct(product, categoryNames, traderNames))
+    );
+    setHistory(
+      select('history')
+        .sort((a, b) => b.created_at.localeCompare(a.created_at))
+        .map(mapHistory)
+    );
+    setSales(
+      select('sales')
+        .sort((a, b) => b.sale_date.localeCompare(a.sale_date))
+        .map(mapSale)
+    );
+  };
+
   const loadAllData = async () => {
     try {
       setIsLoading(true);
-      await Promise.all([
-        loadProducts(),
-        loadHistory(),
-        loadSales()
-      ]);
+      syncFromStore();
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -33,190 +112,45 @@ export const useInventory = () => {
     }
   };
 
-  const loadProducts = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('products')
-        .select(`
-          *,
-          categories:category (
-            name
-          ),
-          traders:trader_id (
-            name
-          )
-        `)
-        .order('date_added', { ascending: false });
-
-      if (error) throw error;
-
-      const mappedProducts: Product[] = data?.map(product => ({
-        id: product.id,
-        name: product.name,
-        barcode: product.barcode,
-        quantity: product.quantity,
-        warehouseQuantity: Number((product as any).warehouse_quantity ?? 0),
-        price: Number(product.price),
-        category: (product.categories as any)?.name || (product.category ? String(product.category) : 'Uncategorized'),
-        categoryId: product.category || undefined,
-        trader: (product.traders as any)?.name || undefined,
-        traderId: (product as any).trader_id || undefined,
-        costPrice: (product as any).cost_price !== null && (product as any).cost_price !== undefined
-          ? Number((product as any).cost_price)
-          : undefined,
-        description: product.description || '',
-        size: product.size || '',
-        image: product.image || '',
-        dateAdded: product.date_added,
-        lastUpdated: product.last_updated
-      })) || [];
-
-      setProducts(mappedProducts);
-    } catch (error) {
-      console.error('Error loading products:', error);
-    }
-  };
-
-  const loadHistory = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('history')
-        .select('*')
-        .order('date', { ascending: false })
-        .order('time', { ascending: false });
-
-      if (error) throw error;
-
-      const mappedHistory: HistoryEntry[] = data?.map(entry => ({
-        id: entry.id,
-        productId: entry.product_id,
-        productName: entry.product_name,
-        barcode: entry.barcode,
-        operation: entry.operation as HistoryEntry['operation'],
-        location: (((entry as any).location as StockLocation) || 'store'),
-        quantity: entry.quantity,
-        date: entry.date,
-        time: entry.time,
-        createdAt: entry.created_at || undefined,
-      })) || [];
-
-      setHistory(mappedHistory);
-    } catch (error) {
-      console.error('Error loading history:', error);
-    }
-  };
-
-  const loadSales = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('sales')
-        .select('*')
-        .order('sale_date', { ascending: false });
-
-      if (error) throw error;
-
-      const mappedSales: Sale[] = data?.map(sale => ({
-        id: sale.id,
-        productId: sale.product_id,
-        productName: sale.product_name,
-        quantity: sale.quantity,
-        unitPrice: Number(sale.unit_price),
-        totalAmount: Number(sale.total_amount),
-        saleDate: sale.sale_date
-      })) || [];
-
-      setSales(mappedSales);
-    } catch (error) {
-      console.error('Error loading sales:', error);
-    }
-  };
-
   const addProduct = async (productData: Omit<Product, 'id' | 'dateAdded' | 'lastUpdated'>) => {
     try {
-      console.log('=== Starting addProduct ===');
-      console.log('Product data:', productData);
+      mutate((tables) => {
+        assertUniqueBarcode(tables, productData.barcode);
 
-      const insertData = {
-        name: productData.name,
-        barcode: productData.barcode,
-        quantity: productData.quantity,
-        warehouse_quantity: productData.warehouseQuantity ?? 0,
-        price: productData.price,
-        category: productData.categoryId ?? productData.category,
-        trader_id: productData.traderId || null,
-        cost_price: productData.costPrice ?? null,
-        description: productData.description || null,
-        size: productData.size || null,
-        image: productData.image || null
-      };
+        const now = new Date();
+        const row: ProductRow = {
+          id: newId(),
+          name: productData.name,
+          barcode: productData.barcode,
+          quantity: productData.quantity,
+          warehouse_quantity: productData.warehouseQuantity ?? 0,
+          price: productData.price,
+          category: productData.categoryId ?? (productData.category || null),
+          trader_id: productData.traderId || null,
+          cost_price: productData.costPrice ?? null,
+          description: productData.description || null,
+          size: productData.size || null,
+          image: productData.image || null,
+          date_added: now.toISOString(),
+          last_updated: now.toISOString(),
+        };
+        tables.products.push(row);
 
-      console.log('Insert data:', insertData);
+        // Log initial stock for whichever side received it. A brand-new product
+        // typically lands in the warehouse; some workflows drop it straight on
+        // the floor. Either way, only log a row if there's a non-zero amount.
+        const base = { product_id: row.id, product_name: row.name, barcode: row.barcode };
+        if (productData.quantity > 0) {
+          addHistoryRow(tables, { ...base, operation: 'add', quantity: productData.quantity, location: 'store' }, now);
+        }
+        if ((productData.warehouseQuantity ?? 0) > 0) {
+          addHistoryRow(tables, { ...base, operation: 'add', quantity: productData.warehouseQuantity!, location: 'warehouse' }, now);
+        }
+      });
 
-      const { data, error } = await supabase
-        .from('products')
-        .insert(insertData)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Supabase error details:', error);
-        throw error;
-      }
-
-      console.log('Product inserted successfully:', data);
-
-      const newProduct: Product = {
-        id: data.id,
-        name: data.name,
-        barcode: data.barcode,
-        quantity: data.quantity,
-        warehouseQuantity: Number((data as any).warehouse_quantity ?? 0),
-        price: Number(data.price),
-        category: data.category ? String(data.category) : 'Uncategorized',
-        categoryId: data.category || undefined,
-        traderId: (data as any).trader_id || undefined,
-        costPrice:
-          (data as any).cost_price !== null && (data as any).cost_price !== undefined
-            ? Number((data as any).cost_price)
-            : undefined,
-        description: data.description || '',
-        size: data.size || '',
-        image: data.image || '',
-        dateAdded: data.date_added,
-        lastUpdated: data.last_updated
-      };
-
-      const [categoryLookup, traderLookup] = await Promise.all([
-        data.category
-          ? supabase.from('categories').select('name').eq('id', data.category).maybeSingle()
-          : Promise.resolve({ data: null as any }),
-        (data as any).trader_id
-          ? supabase.from('traders').select('name').eq('id', (data as any).trader_id).maybeSingle()
-          : Promise.resolve({ data: null as any }),
-      ]);
-
-      const hydratedProduct = {
-        ...newProduct,
-        category: categoryLookup.data?.name || newProduct.category,
-        trader: traderLookup.data?.name || undefined,
-      };
-
-      setProducts(prev => [hydratedProduct, ...prev]);
-
-      // Log initial stock for whichever side received it. A brand-new product
-      // typically lands in the warehouse; some workflows drop it straight on
-      // the floor. Either way, only log a row if there's a non-zero amount.
-      if (productData.quantity > 0) {
-        await addHistoryEntry(newProduct.id, newProduct.name, newProduct.barcode, 'add', productData.quantity, 'store');
-      }
-      if ((productData.warehouseQuantity ?? 0) > 0) {
-        await addHistoryEntry(newProduct.id, newProduct.name, newProduct.barcode, 'add', productData.warehouseQuantity!, 'warehouse');
-      }
-
-      console.log('=== Product added successfully ===');
+      syncFromStore();
     } catch (error) {
-      console.error('=== Error in addProduct ===');
-      console.error('Error details:', error);
+      console.error('Error adding product:', error);
       throw error;
     }
   };
@@ -225,50 +159,28 @@ export const useInventory = () => {
     try {
       // Skip fields the caller didn't supply (e.g. quantity-only nudges from
       // takeFromProduct) so we don't wipe cost_price or trader_id by mistake.
-      const patch: Record<string, unknown> = {};
-      if (updates.name !== undefined) patch.name = updates.name;
-      if (updates.barcode !== undefined) patch.barcode = updates.barcode;
-      if (updates.quantity !== undefined) patch.quantity = updates.quantity;
-      if (updates.warehouseQuantity !== undefined) patch.warehouse_quantity = updates.warehouseQuantity;
-      if (updates.price !== undefined) patch.price = updates.price;
-      if (updates.categoryId !== undefined || updates.category !== undefined) {
-        patch.category = updates.categoryId ?? updates.category;
-      }
-      if (updates.traderId !== undefined) patch.trader_id = updates.traderId || null;
-      if (updates.costPrice !== undefined) patch.cost_price = updates.costPrice ?? null;
-      if (updates.description !== undefined) patch.description = updates.description;
-      if (updates.size !== undefined) patch.size = updates.size;
-      if (updates.image !== undefined) patch.image = updates.image;
+      mutate((tables) => {
+        const product = findProduct(tables, id);
+        if (updates.barcode !== undefined) {
+          assertUniqueBarcode(tables, updates.barcode, id);
+          product.barcode = updates.barcode;
+        }
+        if (updates.name !== undefined) product.name = updates.name;
+        if (updates.quantity !== undefined) product.quantity = updates.quantity;
+        if (updates.warehouseQuantity !== undefined) product.warehouse_quantity = updates.warehouseQuantity;
+        if (updates.price !== undefined) product.price = updates.price;
+        if (updates.categoryId !== undefined || updates.category !== undefined) {
+          product.category = updates.categoryId ?? (updates.category || null);
+        }
+        if (updates.traderId !== undefined) product.trader_id = updates.traderId || null;
+        if (updates.costPrice !== undefined) product.cost_price = updates.costPrice ?? null;
+        if (updates.description !== undefined) product.description = updates.description;
+        if (updates.size !== undefined) product.size = updates.size;
+        if (updates.image !== undefined) product.image = updates.image;
+        product.last_updated = new Date().toISOString();
+      });
 
-      const { error } = await supabase.from('products').update(patch).eq('id', id);
-      if (error) throw error;
-
-      const categoryId = updates.categoryId ?? updates.category;
-      const [categoryLookup, traderLookup] = await Promise.all([
-        categoryId
-          ? supabase.from('categories').select('name').eq('id', categoryId).maybeSingle()
-          : Promise.resolve({ data: null as any }),
-        updates.traderId
-          ? supabase.from('traders').select('name').eq('id', updates.traderId).maybeSingle()
-          : Promise.resolve({ data: null as any }),
-      ]);
-
-      setProducts(prev =>
-        prev.map(product =>
-          product.id === id
-            ? {
-                ...product,
-                ...updates,
-                category: categoryLookup.data?.name || updates.category || product.category,
-                categoryId: categoryId || product.categoryId,
-                trader: traderLookup.data?.name ?? (updates.traderId ? product.trader : product.trader),
-                traderId: updates.traderId !== undefined ? (updates.traderId || undefined) : product.traderId,
-                costPrice: updates.costPrice !== undefined ? updates.costPrice : product.costPrice,
-                lastUpdated: new Date().toISOString(),
-              }
-            : product
-        )
-      );
+      syncFromStore();
     } catch (error) {
       console.error('Error updating product:', error);
       throw error;
@@ -277,120 +189,93 @@ export const useInventory = () => {
 
   const deleteProduct = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('products')
-        .delete()
-        .eq('id', id);
+      mutate((tables) => {
+        tables.products = tables.products.filter((product) => product.id !== id);
+        // Same as the old foreign keys: stock history and sales go with the
+        // product, invoices keep their lines but lose the product link.
+        tables.history = tables.history.filter((entry) => entry.product_id !== id);
+        tables.sales = tables.sales.filter((sale) => sale.product_id !== id);
+        tables.order_items.forEach((item) => {
+          if (item.product_id === id) item.product_id = null;
+        });
+        tables.order_return_items.forEach((item) => {
+          if (item.product_id === id) item.product_id = null;
+        });
+      });
 
-      if (error) throw error;
-
-      setProducts(prev => prev.filter(product => product.id !== id));
+      syncFromStore();
     } catch (error) {
       console.error('Error deleting product:', error);
       throw error;
     }
   };
 
-  const addToProduct = async (productId: string, quantity: number) => {
-    const product = products.find(p => p.id === productId);
-    if (product) {
-      const newQuantity = product.quantity + quantity;
-      await updateProduct(productId, { quantity: newQuantity });
-      await addHistoryEntry(productId, product.name, product.barcode, 'add', quantity);
-    }
-  };
-
-  const takeFromProduct = async (productId: string, quantity: number): Promise<boolean> => {
-    const product = products.find(p => p.id === productId);
-    if (product && product.quantity >= quantity) {
-      const newQuantity = product.quantity - quantity;
-      await updateProduct(productId, { quantity: newQuantity });
-      await addHistoryEntry(productId, product.name, product.barcode, 'remove', quantity);
-      return true;
-    }
-    return false;
-  };
-
-  const addHistoryEntry = async (
+  // Adjust one side's stock and log the movement in a single write.
+  const moveStock = (
     productId: string,
-    productName: string,
-    barcode: string,
-    operation: HistoryEntry['operation'],
     quantity: number,
-    location: StockLocation = 'store'
-  ) => {
-    try {
-      const now = new Date();
-      const { data, error } = await supabase
-        .from('history')
-        .insert({
-          product_id: productId,
-          product_name: productName,
-          barcode: barcode,
-          operation: operation,
-          location,
-          quantity: quantity,
-          date: now.toISOString().split('T')[0],
-          time: now.toLocaleTimeString()
-        })
-        .select()
-        .single();
+    location: StockLocation,
+    operation: 'add' | 'remove'
+  ): boolean => {
+    const moved = mutate((tables) => {
+      const product = findProduct(tables, productId);
+      const field = location === 'warehouse' ? 'warehouse_quantity' : 'quantity';
+      if (operation === 'remove' && product[field] < quantity) return false;
 
-      if (error) throw error;
+      product[field] += operation === 'add' ? quantity : -quantity;
+      product.last_updated = new Date().toISOString();
+      addHistoryRow(tables, {
+        product_id: product.id,
+        product_name: product.name,
+        barcode: product.barcode,
+        operation,
+        quantity,
+        location,
+      });
+      return true;
+    });
 
-      const newEntry: HistoryEntry = {
-        id: data.id,
-        productId: data.product_id,
-        productName: data.product_name,
-        barcode: data.barcode,
-        operation: data.operation as HistoryEntry['operation'],
-        location: ((data as any).location as StockLocation) || location,
-        quantity: data.quantity,
-        date: data.date,
-        time: data.time,
-        createdAt: data.created_at || undefined,
-      };
-
-      setHistory(prev => [newEntry, ...prev]);
-    } catch (error) {
-      console.error('Error adding history entry:', error);
-    }
+    syncFromStore();
+    return moved;
   };
+
+  const addToProduct = async (productId: string, quantity: number) => {
+    moveStock(productId, quantity, 'store', 'add');
+  };
+
+  const takeFromProduct = async (productId: string, quantity: number): Promise<boolean> =>
+    moveStock(productId, quantity, 'store', 'remove');
 
   // ---- Warehouse (back-of-store) operations -------------------------------
   // The store floor keeps its existing addToProduct/takeFromProduct/checkout
   // flow. These three sit alongside them and only touch warehouse stock.
   const addToWarehouse = async (productId: string, quantity: number) => {
-    const product = products.find(p => p.id === productId);
-    if (!product) return;
-    const nextWarehouse = product.warehouseQuantity + quantity;
-    await updateProduct(productId, { warehouseQuantity: nextWarehouse });
-    await addHistoryEntry(productId, product.name, product.barcode, 'add', quantity, 'warehouse');
+    moveStock(productId, quantity, 'warehouse', 'add');
   };
 
-  const takeFromWarehouse = async (productId: string, quantity: number): Promise<boolean> => {
-    const product = products.find(p => p.id === productId);
-    if (!product || product.warehouseQuantity < quantity) return false;
-    const nextWarehouse = product.warehouseQuantity - quantity;
-    await updateProduct(productId, { warehouseQuantity: nextWarehouse });
-    await addHistoryEntry(productId, product.name, product.barcode, 'remove', quantity, 'warehouse');
-    return true;
-  };
+  const takeFromWarehouse = async (productId: string, quantity: number): Promise<boolean> =>
+    moveStock(productId, quantity, 'warehouse', 'remove');
 
   const moveToStore = async (productId: string, quantity: number): Promise<boolean> => {
-    const product = products.find(p => p.id === productId);
-    if (!product || product.warehouseQuantity < quantity || quantity <= 0) return false;
+    if (quantity <= 0) return false;
 
-    // Non-atomic on the DB side, but this is a single-store admin action —
-    // we accept the small window and log two history rows so both filters
-    // catch the movement.
-    await updateProduct(productId, {
-      warehouseQuantity: product.warehouseQuantity - quantity,
-      quantity: product.quantity + quantity,
+    const moved = mutate((tables) => {
+      const product = findProduct(tables, productId);
+      if (product.warehouse_quantity < quantity) return false;
+
+      product.warehouse_quantity -= quantity;
+      product.quantity += quantity;
+      product.last_updated = new Date().toISOString();
+
+      // Two history rows so both the store and warehouse filters catch it.
+      const base = { product_id: product.id, product_name: product.name, barcode: product.barcode };
+      addHistoryRow(tables, { ...base, operation: 'remove', quantity, location: 'warehouse' });
+      addHistoryRow(tables, { ...base, operation: 'add', quantity, location: 'store' });
+      return true;
     });
-    await addHistoryEntry(productId, product.name, product.barcode, 'remove', quantity, 'warehouse');
-    await addHistoryEntry(productId, product.name, product.barcode, 'add', quantity, 'store');
-    return true;
+
+    syncFromStore();
+    return moved;
   };
 
   const completeCheckout = async (payload: {
@@ -404,160 +289,25 @@ export const useInventory = () => {
       throw new Error('لازم تسجل الدخول علشان تكمل عملية البيع');
     }
 
-    if (payload.items.length === 0) {
-      throw new Error('ضيف قطعة واحدة على الأقل للفاتورة');
-    }
-
-    const cartProducts = payload.items.map((item) => {
-      const product = products.find((entry) => entry.id === item.productId);
-      if (!product) {
-        throw new Error('واحد من المنتجات المختارة مش موجود');
-      }
-      if (item.quantity <= 0) {
-        throw new Error(`الكمية لـ ${product.name} لازم تكون أكبر من صفر`);
-      }
-      if (product.quantity < item.quantity) {
-        throw new Error(`الكمية المتوفرة من ${product.name} مش كافية`);
-      }
-      return { product, quantity: item.quantity };
-    });
-
-    let commissionUser: {
-      id: string;
-      username: string;
-      employee_code: string | null;
-      commission_rate: number;
-    } | null = null;
-
-    if (payload.employeeCode?.trim()) {
-      const { data, error } = await supabase
-        .from('users')
-        .select('id, username, employee_code, commission_rate')
-        .eq('employee_code', payload.employeeCode.trim())
-        .limit(1);
-
-      if (error) throw error;
-      if (!data || data.length === 0) {
-        throw new Error('كود الموظف مش موجود');
-      }
-      commissionUser = {
-        id: data[0].id,
-        username: data[0].username,
-        employee_code: data[0].employee_code,
-        commission_rate: Number(data[0].commission_rate || 0),
-      };
-    }
-
-    const subtotal = cartProducts.reduce(
-      (sum, item) => sum + (item.product.price * item.quantity),
-      0
-    );
-    // Discount comes from offers built on the client. Cap at subtotal so an
-    // over-eager cashier can't send a negative total to the DB.
-    const discountAmount = Math.min(
-      subtotal,
-      Math.max(0, Number(payload.discountAmount || 0))
-    );
-    const netTotal = subtotal - discountAmount;
-    // Commission still calculated on the pre-discount subtotal so the sales
-    // person isn't penalized for offers the store chose to run.
-    const commissionRate = commissionUser?.commission_rate || 0;
-    const commissionAmount = subtotal * (commissionRate / 100);
-    const invoiceNumber = `INV-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Date.now().toString().slice(-6)}`;
-
-    const { data: insertedOrder, error: orderError } = await supabase
-      .from('orders')
-      .insert({
-        invoice_number: invoiceNumber,
-        client_id: payload.clientId || null,
-        employee_id: commissionUser?.id || null,
-        employee_code: commissionUser?.employee_code || payload.employeeCode?.trim() || null,
-        sold_by_auth_id: null,
-        subtotal,
-        discount_amount: discountAmount,
-        commission_rate: commissionRate,
-        commission_amount: commissionAmount,
-        returned_subtotal: 0,
-        returned_commission_amount: 0,
-        returned_total_amount: 0,
-        net_subtotal: netTotal,
-        net_commission_amount: commissionAmount,
-        net_total_amount: netTotal,
-        has_return: false,
-        return_count: 0,
-        return_status: 'none',
-        total_amount: netTotal,
-        notes: payload.notes?.trim() || null,
-      })
-      .select()
-      .single();
-
-    if (orderError) throw orderError;
-
-    const orderItemsPayload = cartProducts.map(({ product, quantity }) => ({
-      order_id: insertedOrder.id,
-      product_id: product.id,
-      product_name: product.name,
-      product_barcode: product.barcode,
-      quantity,
-      unit_price: product.price,
-      line_total: product.price * quantity,
-    }));
-
-    const { data: orderItems, error: orderItemsError } = await supabase
-      .from('order_items')
-      .insert(orderItemsPayload)
-      .select();
-
-    if (orderItemsError) throw orderItemsError;
-
-    for (const { product, quantity } of cartProducts) {
-      const newQuantity = product.quantity - quantity;
-      await updateProduct(product.id, { quantity: newQuantity });
-
-      const { data: saleData, error: saleError } = await supabase
-        .from('sales')
-        .insert({
-          product_id: product.id,
-          product_name: product.name,
-          quantity,
-          unit_price: product.price,
-          total_amount: product.price * quantity,
-        })
-        .select()
-        .single();
-
-      if (saleError) throw saleError;
-
-      setSales((prev) => [{
-        id: saleData.id,
-        productId: saleData.product_id,
-        productName: saleData.product_name,
-        quantity: saleData.quantity,
-        unitPrice: Number(saleData.unit_price),
-        totalAmount: Number(saleData.total_amount),
-        saleDate: saleData.sale_date,
-      }, ...prev]);
-
-      await addHistoryEntry(product.id, product.name, product.barcode, 'take', quantity);
-    }
+    const { order, items, employee } = mutate((tables) => checkoutOrder(tables, payload));
+    syncFromStore();
 
     return {
       order: {
-        id: insertedOrder.id,
-        invoiceNumber: insertedOrder.invoice_number,
-        clientId: insertedOrder.client_id || undefined,
-        employeeId: insertedOrder.employee_id || undefined,
-        employeeCode: insertedOrder.employee_code || undefined,
-        soldByAuthId: insertedOrder.sold_by_auth_id || undefined,
-        subtotal: Number(insertedOrder.subtotal),
-        discountAmount: Number((insertedOrder as any).discount_amount || 0),
-        commissionRate: Number(insertedOrder.commission_rate || 0),
-        commissionAmount: Number(insertedOrder.commission_amount || 0),
-        totalAmount: Number(insertedOrder.total_amount),
-        notes: insertedOrder.notes || '',
-        createdAt: insertedOrder.created_at,
-        items: (orderItems || []).map((item) => ({
+        id: order.id,
+        invoiceNumber: order.invoice_number,
+        clientId: order.client_id || undefined,
+        employeeId: order.employee_id || undefined,
+        employeeCode: order.employee_code || undefined,
+        soldByAuthId: order.sold_by_auth_id || undefined,
+        subtotal: Number(order.subtotal),
+        discountAmount: Number(order.discount_amount || 0),
+        commissionRate: Number(order.commission_rate || 0),
+        commissionAmount: Number(order.commission_amount || 0),
+        totalAmount: Number(order.total_amount),
+        notes: order.notes || '',
+        createdAt: order.created_at,
+        items: items.map((item) => ({
           id: item.id,
           orderId: item.order_id,
           productId: item.product_id || undefined,
@@ -569,39 +319,38 @@ export const useInventory = () => {
           createdAt: item.created_at,
         })),
       },
-      employee: commissionUser ? {
-        id: commissionUser.id,
-        username: commissionUser.username,
-        employeeCode: commissionUser.employee_code || undefined,
-        commissionRate: commissionUser.commission_rate,
+      employee: employee ? {
+        id: employee.id,
+        username: employee.username,
+        employeeCode: employee.employee_code || undefined,
+        commissionRate: Number(employee.commission_rate || 0),
       } : null,
       client: null,
     };
   };
 
   const processReturn = async (payload: ProcessReturnPayload) => {
-    const sanitizedItems = payload.items
-      .filter((item) => item.quantity > 0)
-      .map((item) => ({
-        order_item_id: item.orderItemId,
-        quantity: item.quantity,
-      }));
+    if (!authState.user) {
+      throw new Error('لازم تسجل الدخول علشان تسجل مرتجع');
+    }
+
+    const sanitizedItems = payload.items.filter((item) => item.quantity > 0);
 
     if (sanitizedItems.length === 0) {
       throw new Error('اختار قطعة واحدة على الأقل علشان ترجعها');
     }
 
-    const { error } = await supabase.rpc('process_order_return', {
-      p_order_id: payload.orderId,
-      p_items: sanitizedItems,
-      p_reason: payload.reason?.trim() || null,
-    });
+    const actor = { id: authState.user.id, role: authState.user.role };
+    mutate((tables) =>
+      processOrderReturn(tables, {
+        orderId: payload.orderId,
+        items: sanitizedItems,
+        reason: payload.reason,
+        actor,
+      })
+    );
 
-    if (error) {
-      throw new Error(error.message || 'حصلت مشكلة أثناء تسجيل المرتجع');
-    }
-
-    await loadAllData();
+    syncFromStore();
   };
 
   return {

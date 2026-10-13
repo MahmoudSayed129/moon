@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { resetDemoData } from '@/lib/local-db';
 import {
   ClipboardList,
   FolderTree,
   LayoutDashboard,
   LogOut,
+  RotateCcw,
   Menu,
   Package,
   Receipt,
@@ -116,6 +118,12 @@ const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
     setIsMobileOpen(false);
   }, [activeTab]);
 
+  const handleResetDemo = () => {
+    if (!window.confirm('هترجع كل بيانات الديمو لحالتها الأصلية وأي تعديلات هتتمسح. تكمل؟')) return;
+    resetDemoData();
+    window.location.reload();
+  };
+
   const initial = user?.username?.charAt(0)?.toUpperCase() || '؟';
 
   const NavList = ({ compact = false }: { compact?: boolean }) => (
@@ -167,6 +175,14 @@ const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
       >
         <LogOut className="h-4 w-4" />
         تسجيل الخروج
+      </button>
+      <button
+        type="button"
+        onClick={handleResetDemo}
+        className="w-full flex items-center justify-center gap-2 rounded-lg px-3 py-1.5 text-xs text-[#c9b5e8] transition-colors hover:bg-white/10 hover:text-white"
+      >
+        <RotateCcw className="h-3.5 w-3.5" />
+        إعادة ضبط بيانات الديمو
       </button>
     </div>
   );

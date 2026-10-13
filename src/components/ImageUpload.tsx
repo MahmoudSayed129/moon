@@ -44,10 +44,34 @@ const ImageUpload = ({ currentImage, onImageChange }: ImageUploadProps) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const result = e.target?.result as string;
-      onImageChange(result);
+      shrinkImage(result).then(onImageChange);
     };
     reader.readAsDataURL(file);
   };
+
+  // Images are stored in the browser's local storage (~5 MB total), so
+  // downscale big photos to a thumbnail-sized JPEG before saving.
+  const shrinkImage = (dataUrl: string, maxSize = 600) =>
+    new Promise<string>((resolve) => {
+      const image = new Image();
+      image.onload = () => {
+        const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(image.width * scale);
+        canvas.height = Math.round(image.height * scale);
+        const context = canvas.getContext('2d');
+        if (!context) {
+          resolve(dataUrl);
+          return;
+        }
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.8));
+      };
+      image.onerror = () => resolve(dataUrl);
+      image.src = dataUrl;
+    });
 
   const removeImage = () => {
     onImageChange(undefined);

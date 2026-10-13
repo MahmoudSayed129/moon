@@ -5,6 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { DEMO_ACCOUNTS } from '@/lib/demo-seed';
+import { resetDemoData } from '@/lib/local-db';
 
 const LoginForm = () => {
   const [username, setUsername] = useState('');
@@ -13,11 +15,10 @@ const LoginForm = () => {
   const { login } = useAuth();
   const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const signIn = async (nextUsername: string, nextPassword: string) => {
     setIsLoading(true);
 
-    const result = await login(username, password);
+    const result = await login(nextUsername, nextPassword);
 
     if (result.success) {
       toast({
@@ -33,6 +34,23 @@ const LoginForm = () => {
     }
 
     setIsLoading(false);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    signIn(username, password);
+  };
+
+  const handleDemoLogin = (account: (typeof DEMO_ACCOUNTS)[number]) => {
+    setUsername(account.username);
+    setPassword(account.password);
+    signIn(account.username, account.password);
+  };
+
+  const handleResetDemo = () => {
+    if (!window.confirm('هترجع كل بيانات الديمو لحالتها الأصلية وأي تعديلات هتتمسح. تكمل؟')) return;
+    resetDemoData();
+    toast({ title: 'تمت إعادة ضبط بيانات الديمو' });
   };
 
   return (
@@ -74,6 +92,36 @@ const LoginForm = () => {
               {isLoading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
             </Button>
           </form>
+
+          <div className="mt-6 space-y-3 border-t border-[#ece3f9] pt-5">
+            <p className="text-center text-sm font-semibold text-[#4d1f76]">حسابات الديمو</p>
+            <div className="grid gap-2">
+              {DEMO_ACCOUNTS.map((account) => (
+                <button
+                  key={account.username}
+                  type="button"
+                  onClick={() => handleDemoLogin(account)}
+                  disabled={isLoading}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-[#dcc8f7] bg-[#faf6ff] px-3 py-2 text-sm transition-colors hover:bg-[#f1e7fd] disabled:opacity-60"
+                >
+                  <span className="font-medium text-[#4d1f76]">{account.label}</span>
+                  <span className="font-mono text-xs text-gray-500" dir="ltr">
+                    {account.username} / {account.password}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <p className="text-center text-xs text-gray-500">
+              نسخة تجريبية: كل البيانات محفوظة على الجهاز ده بس.{' '}
+              <button
+                type="button"
+                onClick={handleResetDemo}
+                className="font-medium text-[#7b22cc] underline-offset-2 hover:underline"
+              >
+                إعادة ضبط البيانات
+              </button>
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { isInMonth, select } from '@/lib/local-db';
 import { resolveOrderFinancials } from '@/lib/order-financials';
 import { useAuth } from './useAuth';
 
@@ -12,17 +12,6 @@ export interface EmployeePerformanceEntry {
   netRevenue: number;
 }
 
-const getCurrentMonthRange = (month: string) => {
-  const startDate = `${month}-01T00:00:00.000Z`;
-  const nextMonthDate = new Date(`${month}-01T00:00:00.000Z`);
-  nextMonthDate.setUTCMonth(nextMonthDate.getUTCMonth() + 1);
-
-  return {
-    startDate,
-    endDate: nextMonthDate.toISOString(),
-  };
-};
-
 export const useEmployeePerformance = (month: string) => {
   const { authState } = useAuth();
   const [entries, setEntries] = useState<EmployeePerformanceEntry[]>([]);
@@ -32,46 +21,22 @@ export const useEmployeePerformance = (month: string) => {
     const loadPerformance = async () => {
       if (!authState.isAuthenticated || !month) return;
 
-      const { startDate, endDate } = getCurrentMonthRange(month);
-
       try {
         setIsLoading(true);
 
-        const [{ data: employeesData, error: employeesError }, { data: ordersData, error: ordersError }] = await Promise.all([
-          supabase
-            .from('users')
-            .select('id, username, employee_code, role')
-            .eq('role', 'employee')
-            .order('username', { ascending: true }),
-          supabase
-            .from('orders')
-            .select(`
-              id,
-              employee_id,
-              employee_code,
-              subtotal,
-              commission_amount,
-              total_amount,
-              net_subtotal,
-              net_commission_amount,
-              net_total_amount,
-              has_return,
-              return_status,
-              order_items (
-                quantity,
-                returned_quantity
-              )
-            `)
-            .not('employee_id', 'is', null)
-            .gte('created_at', startDate)
-            .lt('created_at', endDate),
-        ]);
-
-        if (employeesError) throw employeesError;
-        if (ordersError) throw ordersError;
+        const employeesData = select('users')
+          .filter((user) => user.role === 'employee')
+          .sort((a, b) => a.username.localeCompare(b.username));
+        const orderItems = select('order_items');
+        const ordersData = select('orders')
+          .filter((order) => order.employee_id && isInMonth(order.created_at, month))
+          .map((order) => ({
+            ...order,
+            order_items: orderItems.filter((item) => item.order_id === order.id),
+          }));
 
         const performanceMap = new Map<string, EmployeePerformanceEntry>(
-          (employeesData || []).map((employee: any) => [
+          employeesData.map((employee) => [
             employee.id,
             {
               employeeId: employee.id,
@@ -84,14 +49,14 @@ export const useEmployeePerformance = (month: string) => {
           ])
         );
 
-        for (const order of ordersData || []) {
+        for (const order of ordersData) {
           if (!order.employee_id) continue;
 
           const employee = performanceMap.get(order.employee_id);
           if (!employee) continue;
 
           const financials = resolveOrderFinancials(order);
-          const itemsSold = (order.order_items || []).reduce((sum: number, item: any) => {
+          const itemsSold = order.order_items.reduce((sum, item) => {
             return sum + Math.max(0, Number(item.quantity || 0) - Number(item.returned_quantity || 0));
           }, 0);
 

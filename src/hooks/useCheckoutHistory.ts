@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { byNewest, isInMonth, select, withOrderRelations } from '@/lib/local-db';
 import { useAuth } from './useAuth';
 import { resolveOrderFinancials } from '@/lib/order-financials';
 
@@ -134,38 +134,14 @@ export const useCheckoutHistory = (month: string) => {
   const loadOrders = useCallback(async () => {
     if (!month) return;
 
-    const startDate = `${month}-01T00:00:00.000Z`;
-    const nextMonthDate = new Date(`${month}-01T00:00:00.000Z`);
-    nextMonthDate.setUTCMonth(nextMonthDate.getUTCMonth() + 1);
-    const endDate = nextMonthDate.toISOString();
-
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          clients ( name ),
-          users ( username ),
-          order_items (
-            *,
-            products (
-              trader_id,
-              cost_price,
-              traders:trader_id ( name )
-            )
-          ),
-          order_returns (
-            *,
-            order_return_items ( * )
-          )
-        `)
-        .gte('created_at', startDate)
-        .lt('created_at', endDate)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setOrders((data || []).map(mapOrder));
+      const data = withOrderRelations(
+        select('orders')
+          .filter((order) => isInMonth(order.created_at, month))
+          .sort(byNewest)
+      );
+      setOrders(data.map(mapOrder));
     } catch (error) {
       console.error('Error loading checkout history:', error);
     } finally {

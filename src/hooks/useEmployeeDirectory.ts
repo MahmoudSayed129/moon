@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { select, UserRow } from '@/lib/local-db';
 import { useAuth } from './useAuth';
 
 export interface EmployeeDirectoryEntry {
@@ -10,7 +10,7 @@ export interface EmployeeDirectoryEntry {
   commissionRate: number;
 }
 
-const mapEmployee = (row: any): EmployeeDirectoryEntry => ({
+const mapEmployee = (row: UserRow): EmployeeDirectoryEntry => ({
   id: row.id,
   username: row.username,
   employeeCode: row.employee_code || undefined,
@@ -31,14 +31,10 @@ export const useEmployeeDirectory = () => {
 
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
-        .from('users')
-        .select('id, username, employee_code, role, commission_rate')
-        .in('role', ['employee', 'supervisor'])
-        .order('username', { ascending: true });
-
-      if (error) throw error;
-      setEmployees((data || []).map(mapEmployee));
+      const data = select('users')
+        .filter((user) => user.role === 'employee' || user.role === 'supervisor')
+        .sort((a, b) => a.username.localeCompare(b.username));
+      setEmployees(data.map(mapEmployee));
     } catch (error) {
       console.error('Error loading employee directory:', error);
     } finally {

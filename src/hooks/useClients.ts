@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { byNewest, mutate, newId, select, withOrderRelations } from '@/lib/local-db';
 import { Client, Order, OrderItem } from '@/types';
 import { useAuth } from './useAuth';
 import { resolveOrderFinancials } from '@/lib/order-financials';
@@ -97,13 +97,8 @@ export const useClients = () => {
   const loadClients = useCallback(async () => {
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*')
-        .order('name', { ascending: true });
-
-      if (error) throw error;
-      setClients((data || []).map(mapClient));
+      const data = select('clients').sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+      setClients(data.map(mapClient));
     } catch (error) {
       console.error('Error loading clients:', error);
     } finally {
@@ -123,21 +118,26 @@ export const useClients = () => {
     email?: string;
     notes?: string;
   }) => {
-    const { data, error } = await supabase
-      .from('clients')
-      .insert({
+    const data = mutate((tables) => {
+      const now = new Date().toISOString();
+      const row = {
+        id: newId(),
         name: payload.name.trim(),
         phone: payload.phone?.trim() || null,
         email: payload.email?.trim() || null,
         notes: payload.notes?.trim() || null,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
+        has_returns: false,
+        returns_count: 0,
+        last_returned_at: null,
+        created_at: now,
+        updated_at: now,
+      };
+      tables.clients.push(row);
+      return row;
+    });
 
     const client = mapClient(data);
-    setClients((prev) => [...prev, client].sort((a, b) => a.name.localeCompare(b.name)));
+    setClients((prev) => [...prev, client].sort((a, b) => a.name.localeCompare(b.name, 'ar')));
     return client;
   }, []);
 
@@ -145,19 +145,17 @@ export const useClients = () => {
     clientId: string,
     updates: Partial<Pick<Client, 'name' | 'phone' | 'email' | 'notes'>>
   ) => {
-    const { data, error } = await supabase
-      .from('clients')
-      .update({
-        name: updates.name?.trim(),
-        phone: updates.phone?.trim() || null,
-        email: updates.email?.trim() || null,
-        notes: updates.notes?.trim() || null,
-      })
-      .eq('id', clientId)
-      .select()
-      .single();
+    const data = mutate((tables) => {
+      const row = tables.clients.find((entry) => entry.id === clientId);
+      if (!row) throw new Error('العميل مش موجود');
 
-    if (error) throw error;
+      if (updates.name?.trim()) row.name = updates.name.trim();
+      row.phone = updates.phone?.trim() || null;
+      row.email = updates.email?.trim() || null;
+      row.notes = updates.notes?.trim() || null;
+      row.updated_at = new Date().toISOString();
+      return row;
+    });
 
     const client = mapClient(data);
     setClients((prev) => prev.map((entry) => (entry.id === client.id ? client : entry)));
@@ -165,27 +163,26 @@ export const useClients = () => {
   }, []);
 
   const deleteClient = useCallback(async (clientId: string) => {
-    const { error } = await supabase.from('clients').delete().eq('id', clientId);
-    if (error) throw error;
+    mutate((tables) => {
+      tables.clients = tables.clients.filter((client) => client.id !== clientId);
+      // Invoices stay; they just become walk-in invoices.
+      tables.orders.forEach((order) => {
+        if (order.client_id === clientId) order.client_id = null;
+      });
+      tables.order_returns.forEach((entry) => {
+        if (entry.client_id === clientId) entry.client_id = null;
+      });
+    });
     setClients((prev) => prev.filter((client) => client.id !== clientId));
   }, []);
 
   const getClientOrders = useCallback(async (clientId: string) => {
-    const { data, error } = await supabase
-      .from('orders')
-      .select(`
-        *,
-        order_items (*),
-        order_returns (
-          *,
-          order_return_items (*)
-        )
-      `)
-      .eq('client_id', clientId)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return (data || []).map(mapOrder);
+    const data = withOrderRelations(
+      select('orders')
+        .filter((order) => order.client_id === clientId)
+        .sort(byNewest)
+    );
+    return data.map(mapOrder);
   }, []);
 
   return {

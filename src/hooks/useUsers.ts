@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import bcrypt from 'bcryptjs';
+import { mutate, newId, select } from '@/lib/local-db';
 import { User } from '@/types/auth';
 import { useAuth } from './useAuth';
 
@@ -13,28 +12,17 @@ export const useUsers = () => {
   const fetchUsers = async () => {
     try {
       setIsLoading(true);
-      console.log('Fetching users...');
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const data = select('users').sort((a, b) => b.created_at.localeCompare(a.created_at));
 
-      if (error) {
-        console.error('Error fetching users:', error);
-        throw error;
-      }
-
-      console.log('Users fetched successfully:', data);
-      // Map data to include updated_at field using created_at
-      const mappedUsers: User[] = data?.map(user => ({
+      const mappedUsers: User[] = data.map(user => ({
         id: user.id,
         username: user.username,
         role: user.role,
         employee_code: user.employee_code || undefined,
         commission_rate: Number(user.commission_rate || 0),
         created_at: user.created_at,
-        updated_at: user.created_at // Use created_at since updated_at doesn't exist in new DB
-      })) || [];
+        updated_at: user.created_at
+      }));
       setUsers(mappedUsers);
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -51,22 +39,14 @@ export const useUsers = () => {
     commissionRate = 0
   ) => {
     try {
-      console.log('Adding user:', username, 'with role:', role);
-      console.log('Current auth state:', authState);
-      
-      // Check if user is authenticated
       if (!authState.isAuthenticated || !authState.user) {
-        console.error('User not authenticated');
         return { success: false, error: 'لازم تسجل الدخول علشان تضيف مستخدمين' };
       }
 
-      // Check if user is super admin
       if (authState.user.role !== 'super_admin') {
-        console.error('Unauthorized: User is not super admin');
         return { success: false, error: 'المدير العام فقط هو اللي يقدر يضيف مستخدمين' };
       }
 
-      // Validate username
       if (!username || username.trim().length === 0) {
         return { success: false, error: 'اسم المستخدم مطلوب' };
       }
@@ -75,58 +55,32 @@ export const useUsers = () => {
         return { success: false, error: 'اسم المستخدم لازم يكون 3 حروف على الأقل' };
       }
 
-      // Check if username already exists
-      const { data: existingUsers, error: checkError } = await supabase
-        .from('users')
-        .select('username')
-        .eq('username', username.trim());
-
-      if (checkError) {
-        console.error('Error checking existing users:', checkError);
-        return { success: false, error: 'مقدرناش نتأكد من المستخدمين الموجودين' };
-      }
-
-      if (existingUsers && existingUsers.length > 0) {
-        console.log('Username already exists');
+      const existingUsers = select('users');
+      if (existingUsers.some((user) => user.username === username.trim())) {
         return { success: false, error: 'اسم المستخدم ده موجود بالفعل' };
       }
 
+      const code = employeeCode?.trim() || null;
+      if (code && existingUsers.some((user) => user.employee_code === code)) {
+        return { success: false, error: 'كود الموظف ده مستخدم لموظف تاني' };
+      }
+
       const hashedPassword = await bcrypt.hash(password, 10);
-      console.log('Password hashed successfully');
-      
-      const { data, error } = await supabase
-        .from('users')
-        .insert([{
+
+      const data = mutate((tables) => {
+        const row = {
+          id: newId(),
           username: username.trim(),
           password_hash: hashedPassword,
-          role: role,
-          employee_code: employeeCode?.trim() || null,
-          commission_rate: commissionRate
-        }])
-        .select()
-        .single();
+          role,
+          employee_code: code,
+          commission_rate: commissionRate,
+          created_at: new Date().toISOString(),
+        };
+        tables.users.push(row);
+        return row;
+      });
 
-      if (error) {
-        console.error('Direct insert failed:', error);
-        return { success: false, error: 'مقدرناش نضيف المستخدم: ' + error.message };
-      }
-
-      console.log('User added successfully:', data);
-      
-      // Sync to auth system
-      try {
-        await supabase.functions.invoke('sync-user-auth', {
-          body: {
-            username: username.trim(),
-            password,
-            app_user_id: data.id,
-            role
-          }
-        });
-      } catch (syncError) {
-        console.warn('Failed to sync to auth:', syncError);
-      }
-      
       await fetchUsers();
       return { success: true, data };
     } catch (error) {
@@ -137,24 +91,17 @@ export const useUsers = () => {
 
   const updateUserPassword = async (userId: string, newPassword: string) => {
     try {
-      // Check authentication and permissions
       if (!authState.isAuthenticated || authState.user?.role !== 'super_admin') {
         return { success: false, error: 'المدير العام فقط هو اللي يقدر يغيّر كلمات المرور' };
       }
 
       const hashedPassword = await bcrypt.hash(newPassword, 10);
-      
-      const { error } = await supabase
-        .from('users')
-        .update({ 
-          password_hash: hashedPassword
-        })
-        .eq('id', userId);
 
-      if (error) {
-        console.error('Error updating password:', error);
-        return { success: false, error: error.message };
-      }
+      mutate((tables) => {
+        const user = tables.users.find((entry) => entry.id === userId);
+        if (!user) throw new Error('المستخدم مش موجود');
+        user.password_hash = hashedPassword;
+      });
 
       await fetchUsers();
       return { success: true };
@@ -166,20 +113,21 @@ export const useUsers = () => {
 
   const deleteUser = async (userId: string) => {
     try {
-      // Check authentication and permissions
       if (!authState.isAuthenticated || authState.user?.role !== 'super_admin') {
         return { success: false, error: 'المدير العام فقط هو اللي يقدر يحذف مستخدمين' };
       }
 
-      const { error } = await supabase
-        .from('users')
-        .delete()
-        .eq('id', userId);
-
-      if (error) {
-        console.error('Error deleting user:', error);
-        return { success: false, error: error.message };
+      if (authState.user?.id === userId) {
+        return { success: false, error: 'مينفعش تحذف الحساب اللي داخل بيه' };
       }
+
+      mutate((tables) => {
+        tables.users = tables.users.filter((user) => user.id !== userId);
+        // Invoices keep their numbers; they just lose the employee link.
+        tables.orders.forEach((order) => {
+          if (order.employee_id === userId) order.employee_id = null;
+        });
+      });
 
       await fetchUsers();
       return { success: true };
@@ -190,15 +138,10 @@ export const useUsers = () => {
   };
 
   useEffect(() => {
-    console.log('useUsers useEffect triggered');
-    console.log('Auth state:', authState);
-    
-    // Only fetch users if authenticated and is super admin
+    // Only the super admin manages users.
     if (authState.isAuthenticated && authState.user?.role === 'super_admin') {
-      console.log('Fetching users because user is authenticated super admin');
       fetchUsers();
     } else {
-      console.log('Not fetching users - not authenticated or not super admin');
       setUsers([]);
     }
   }, [authState.isAuthenticated, authState.user?.role]);

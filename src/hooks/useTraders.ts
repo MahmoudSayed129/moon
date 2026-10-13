@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { mutate, newId, select, TraderRow } from '@/lib/local-db';
 import { Trader } from '@/types';
 
-const mapTrader = (row: any): Trader => ({
+const mapTrader = (row: TraderRow): Trader => ({
   id: row.id,
   name: row.name,
   phone: row.phone || '',
@@ -11,6 +11,8 @@ const mapTrader = (row: any): Trader => ({
   updatedAt: row.updated_at,
 });
 
+const DUPLICATE_NAME_ERROR = 'فيه تاجر بنفس الاسم ده بالفعل';
+
 export const useTraders = () => {
   const [traders, setTraders] = useState<Trader[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -18,13 +20,8 @@ export const useTraders = () => {
   const loadTraders = useCallback(async () => {
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
-        .from('traders')
-        .select('*')
-        .order('name', { ascending: true });
-
-      if (error) throw error;
-      setTraders((data || []).map(mapTrader));
+      const data = select('traders').sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+      setTraders(data.map(mapTrader));
     } catch (error) {
       console.error('Error loading traders:', error);
     } finally {
@@ -38,12 +35,21 @@ export const useTraders = () => {
 
   const addTrader = useCallback(
     async (payload: { name: string; phone?: string; notes?: string }) => {
-      const { error } = await supabase.from('traders').insert({
-        name: payload.name.trim(),
-        phone: payload.phone?.trim() || null,
-        notes: payload.notes?.trim() || null,
+      mutate((tables) => {
+        const name = payload.name.trim();
+        if (tables.traders.some((trader) => trader.name === name)) {
+          throw new Error(DUPLICATE_NAME_ERROR);
+        }
+        const now = new Date().toISOString();
+        tables.traders.push({
+          id: newId(),
+          name,
+          phone: payload.phone?.trim() || null,
+          notes: payload.notes?.trim() || null,
+          created_at: now,
+          updated_at: now,
+        });
       });
-      if (error) throw error;
       await loadTraders();
     },
     [loadTraders]
@@ -54,15 +60,19 @@ export const useTraders = () => {
       id: string,
       updates: { name?: string; phone?: string; notes?: string }
     ) => {
-      const { error } = await supabase
-        .from('traders')
-        .update({
-          name: updates.name?.trim(),
-          phone: updates.phone?.trim() || null,
-          notes: updates.notes?.trim() || null,
-        })
-        .eq('id', id);
-      if (error) throw error;
+      mutate((tables) => {
+        const trader = tables.traders.find((entry) => entry.id === id);
+        if (!trader) throw new Error('التاجر مش موجود');
+
+        const name = updates.name?.trim();
+        if (name && tables.traders.some((entry) => entry.id !== id && entry.name === name)) {
+          throw new Error(DUPLICATE_NAME_ERROR);
+        }
+        if (name) trader.name = name;
+        trader.phone = updates.phone?.trim() || null;
+        trader.notes = updates.notes?.trim() || null;
+        trader.updated_at = new Date().toISOString();
+      });
       await loadTraders();
     },
     [loadTraders]
@@ -70,8 +80,12 @@ export const useTraders = () => {
 
   const deleteTrader = useCallback(
     async (id: string) => {
-      const { error } = await supabase.from('traders').delete().eq('id', id);
-      if (error) throw error;
+      mutate((tables) => {
+        tables.traders = tables.traders.filter((trader) => trader.id !== id);
+        tables.products.forEach((product) => {
+          if (product.trader_id === id) product.trader_id = null;
+        });
+      });
       await loadTraders();
     },
     [loadTraders]

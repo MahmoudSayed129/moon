@@ -1,73 +1,40 @@
-# Welcome to your Lovable project
+# Moon Store — demo
 
-## Project info
+Store management app for Moon Store (inventory, warehouse, point of sale,
+invoices & returns, clients, employees and commissions), in Arabic.
 
-**URL**: https://lovable.dev/projects/ce2d31b9-93a6-4e23-b2d4-0361274a3c37
+This version is **for demonstration only**: there is no database or backend.
+All data lives in the browser's `localStorage`, and the app comes pre-filled
+with demo products, clients, employees and ~3 months of invoices.
 
-## How can I edit this code?
-
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/ce2d31b9-93a6-4e23-b2d4-0361274a3c37) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+## Run it
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Then open http://localhost:8080.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Demo accounts
 
-**Use GitHub Codespaces**
+| Role | Username | Password |
+| --- | --- | --- |
+| Super admin (المدير العام) | `admin` | `admin123` |
+| Supervisor (مشرف) | `manager` | `manager123` |
+| Employee (موظف مبيعات) | `ahmed` | `ahmed123` |
+| Employee | `mona` | `mona123` |
+| Employee | `youssef` | `youssef123` |
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+The login screen has one-click buttons for the first three.
 
-## What technologies are used for this project?
+## How the local data works
 
-This project is built with:
+- `src/lib/local-db.ts` — the local store (all tables in one localStorage entry).
+- `src/lib/store-operations.ts` — checkout and the 14-day return logic.
+- `src/lib/demo-seed.ts` — the demo dataset, generated relative to today so the
+  current month always has sales.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/ce2d31b9-93a6-4e23-b2d4-0361274a3c37) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+Data is per browser and per device: changes you make stay on that machine only.
+To start over, use **إعادة ضبط البيانات** on the login screen or
+**إعادة ضبط بيانات الديمو** in the admin sidebar.
