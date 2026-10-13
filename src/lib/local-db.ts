@@ -164,7 +164,7 @@ export interface Tables {
   order_return_items: OrderReturnItemRow[];
 }
 
-const STORAGE_KEY = 'moon-demo-db-v1';
+const STORAGE_KEY = 'ravin-demo-db-v1';
 
 let cache: Tables | null = null;
 let seedFactory: (() => Tables) | null = null;

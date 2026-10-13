@@ -23,7 +23,7 @@ const LoginForm = () => {
     if (result.success) {
       toast({
         title: 'تم تسجيل الدخول',
-        description: 'أهلاً بيك في مون ستور',
+        description: 'أهلاً بيك في رافين ستور',
       });
     } else {
       toast({
@@ -54,13 +54,13 @@ const LoginForm = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(143,76,214,0.25),_transparent_35%),linear-gradient(180deg,#fbf7ff_0%,#f4effc_100%)] flex items-center justify-center px-4">
-      <Card className="w-full max-w-md border-[#dcc8f7] shadow-2xl shadow-[#8f4cd633]">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(255,51,0,0.10),_transparent_35%),linear-gradient(180deg,#fafafa_0%,#efefef_100%)] flex items-center justify-center px-4">
+      <Card className="w-full max-w-md border-neutral-200 shadow-2xl shadow-black/10">
         <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-black tracking-[0.3em] text-[#4d1f76]">
-            MO<span className="text-[#7b22cc]">☾</span>N
+          <CardTitle className="flex justify-center py-2">
+            <img src="/ravin-logo.png" alt="Ravin" className="h-12 w-auto" />
           </CardTitle>
-          <CardDescription>تسجيل الدخول إلى مون ستور</CardDescription>
+          <CardDescription>تسجيل الدخول إلى رافين ستور</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -93,8 +93,8 @@ const LoginForm = () => {
             </Button>
           </form>
 
-          <div className="mt-6 space-y-3 border-t border-[#ece3f9] pt-5">
-            <p className="text-center text-sm font-semibold text-[#4d1f76]">حسابات الديمو</p>
+          <div className="mt-6 space-y-3 border-t border-neutral-200 pt-5">
+            <p className="text-center text-sm font-semibold text-neutral-900">حسابات الديمو</p>
             <div className="grid gap-2">
               {DEMO_ACCOUNTS.map((account) => (
                 <button
@@ -102,9 +102,9 @@ const LoginForm = () => {
                   type="button"
                   onClick={() => handleDemoLogin(account)}
                   disabled={isLoading}
-                  className="flex items-center justify-between gap-3 rounded-lg border border-[#dcc8f7] bg-[#faf6ff] px-3 py-2 text-sm transition-colors hover:bg-[#f1e7fd] disabled:opacity-60"
+                  className="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm transition-colors hover:border-brand-200 hover:bg-brand-50 disabled:opacity-60"
                 >
-                  <span className="font-medium text-[#4d1f76]">{account.label}</span>
+                  <span className="font-medium text-neutral-900">{account.label}</span>
                   <span className="font-mono text-xs text-gray-500" dir="ltr">
                     {account.username} / {account.password}
                   </span>
@@ -116,7 +116,7 @@ const LoginForm = () => {
               <button
                 type="button"
                 onClick={handleResetDemo}
-                className="font-medium text-[#7b22cc] underline-offset-2 hover:underline"
+                className="font-medium text-brand-600 underline-offset-2 hover:underline"
               >
                 إعادة ضبط البيانات
               </button>

@@ -1,4 +1,4 @@
-// Demo content for Moon Store. Built fresh (relative to "now") the first time
+// Demo content for Ravin Store. Built fresh (relative to "now") the first time
 // the app opens or after "reset demo data", so the current month always has
 // sales, a few invoices are still inside the 14-day return window, and the
 // previous months have history to browse.
@@ -167,7 +167,7 @@ const PRODUCTS: ProductSeed[] = [
   { name: 'صندل جلد بني', size: '41', price: 600, cost: 330, store: 20, warehouse: 25, category: 'shoes', trader: 'amal', image: ['🩴', '#fef3c7', '#92400e'], description: 'صندل جلد طبيعي', weight: 4 },
   { name: 'حذاء كلاسيك أسود', size: '43', price: 1350, cost: 780, store: 5, warehouse: 12, category: 'shoes', trader: 'amal', image: ['👞', '#e4e4e7', '#27272a'], description: 'حذاء جلد رسمي', weight: 3 },
   { name: 'شنطة كروس جلد', size: 'مقاس موحد', price: 480, cost: 250, store: 13, warehouse: 20, category: 'accessories', trader: 'alex', image: ['👜', '#fae8ff', '#a21caf'], description: 'شنطة كروس بسلسلة', weight: 5 },
-  { name: 'كاب قطن موف', size: 'فري سايز', price: 180, cost: 85, store: 30, warehouse: 50, category: 'accessories', trader: 'nile', image: ['🧢', '#f3e8ff', '#9333ea'], description: 'كاب مطرز بلوجو مون', weight: 5 },
+  { name: 'كاب قطن موف', size: 'فري سايز', price: 180, cost: 85, store: 30, warehouse: 50, category: 'accessories', trader: 'nile', image: ['🧢', '#f3e8ff', '#9333ea'], description: 'كاب مطرز بلوجو رافين', weight: 5 },
   { name: 'نضارة شمس كلاسيك', size: 'مقاس موحد', price: 350, cost: 160, store: 17, warehouse: 22, category: 'accessories', trader: 'alex', image: ['🕶️', '#fef9c3', '#ca8a04'], description: 'حماية UV400', weight: 4 },
   { name: 'سكارف حرير مشجر', size: 'مقاس موحد', price: 260, cost: 120, store: 2, warehouse: 15, category: 'accessories', trader: 'alex', image: ['🧣', '#ffe4e6', '#e11d48'], description: 'حرير صناعي مشجر', weight: 3 },
 ];

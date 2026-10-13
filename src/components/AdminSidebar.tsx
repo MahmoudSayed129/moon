@@ -139,11 +139,11 @@ const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
             className={`group relative w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
               isActive
                 ? 'bg-white/15 text-white shadow-inner'
-                : 'text-[#c9b5e8] hover:bg-white/10 hover:text-white'
+                : 'text-neutral-400 hover:bg-white/10 hover:text-white'
             }`}
           >
             {isActive && (
-              <span className="absolute right-0 top-1.5 bottom-1.5 w-1 rounded-l-full bg-[#c084fc]" />
+              <span className="absolute right-0 top-1.5 bottom-1.5 w-1 rounded-l-full bg-brand" />
             )}
             <Icon className="h-5 w-5 flex-shrink-0" />
             <span className="truncate">{item.label}</span>
@@ -163,7 +163,7 @@ const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
           <div className="truncate text-sm font-semibold text-white">
             {user?.username || '—'}
           </div>
-          <div className="text-xs text-[#c9b5e8]">
+          <div className="text-xs text-neutral-400">
             {user?.role ? roleLabels[user.role] || user.role : '—'}
           </div>
         </div>
@@ -179,7 +179,7 @@ const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
       <button
         type="button"
         onClick={handleResetDemo}
-        className="w-full flex items-center justify-center gap-2 rounded-lg px-3 py-1.5 text-xs text-[#c9b5e8] transition-colors hover:bg-white/10 hover:text-white"
+        className="w-full flex items-center justify-center gap-2 rounded-lg px-3 py-1.5 text-xs text-neutral-400 transition-colors hover:bg-white/10 hover:text-white"
       >
         <RotateCcw className="h-3.5 w-3.5" />
         إعادة ضبط بيانات الديمو
@@ -189,11 +189,9 @@ const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
 
   const Logo = () => (
     <div className="flex flex-col items-center gap-1 border-b border-white/10 px-4 pt-6 pb-5">
-      <div className="text-2xl font-black tracking-[0.35em] text-[#f3e9ff] drop-shadow-[0_0_18px_rgba(192,132,252,0.55)]">
-        MO<span className="text-[#c084fc]">☾</span>N
-      </div>
-      <div className="rounded-full border border-white/20 bg-white/10 px-3 py-0.5 text-[11px] text-[#f4eefe] backdrop-blur">
-        مون ستور
+      <img src="/ravin-logo-light.png" alt="Ravin" className="h-9 w-auto" />
+      <div className="mt-1 rounded-full border border-white/15 bg-white/5 px-3 py-0.5 text-[11px] text-neutral-300">
+        رافين ستور
       </div>
     </div>
   );
@@ -201,7 +199,7 @@ const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
   return (
     <>
       {/* Mobile top bar (< lg) */}
-      <div className="lg:hidden sticky top-0 z-30 flex items-center justify-between gap-3 bg-gradient-to-l from-[#13091d] via-[#3f1169] to-[#7b22cc] px-4 py-3 text-white shadow-md">
+      <div className="lg:hidden sticky top-0 z-30 flex items-center justify-between gap-3 bg-gradient-to-l from-[#0a0a0a] via-[#151515] to-[#222222] px-4 py-3 text-white shadow-md">
         <button
           type="button"
           onClick={() => setIsMobileOpen(true)}
@@ -210,9 +208,7 @@ const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
         >
           <Menu className="h-5 w-5" />
         </button>
-        <div className="text-lg font-black tracking-[0.35em] text-[#f3e9ff]">
-          MO<span className="text-[#c084fc]">☾</span>N
-        </div>
+        <img src="/ravin-logo-light.png" alt="Ravin" className="h-6 w-auto" />
         <div className="w-9" />
       </div>
 
@@ -227,7 +223,7 @@ const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
 
       {/* Sidebar. Fixed on desktop; slides in from the right on mobile (RTL). */}
       <aside
-        className={`fixed top-0 right-0 z-50 flex h-screen w-64 flex-col bg-gradient-to-b from-[#13091d] via-[#3f1169] to-[#4d1f76] shadow-2xl shadow-[#8f4cd633] transition-transform lg:translate-x-0 ${
+        className={`fixed top-0 right-0 z-50 flex h-screen w-64 flex-col bg-gradient-to-b from-[#0a0a0a] via-[#141414] to-[#1c1c1c] shadow-2xl shadow-black/30 transition-transform lg:translate-x-0 ${
           isMobileOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'
         }`}
         aria-label="القائمة الجانبية"

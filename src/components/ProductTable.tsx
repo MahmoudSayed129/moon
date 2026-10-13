@@ -25,12 +25,12 @@ import {
 import * as XLSX from 'xlsx';
 import autoTable from 'jspdf-autotable';
 import {
-  createMoonPdf,
-  drawMoonHeader,
-  drawMoonSectionTitle,
-  drawMoonStatStrip,
-  moonPdfColors,
-  moonTableTheme,
+  createRavinPdf,
+  drawRavinHeader,
+  drawRavinSectionTitle,
+  drawRavinStatStrip,
+  ravinPdfColors,
+  ravinTableTheme,
 } from '@/lib/pdf-theme';
 
 type Props = {
@@ -242,7 +242,7 @@ const ProductTable = ({
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Products');
 
-      const filename = `Moon_Products_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
+      const filename = `Ravin_Products_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
       XLSX.writeFile(workbook, filename);
 
       toast({
@@ -261,16 +261,16 @@ const ProductTable = ({
 
   const generatePDFReport = () => {
     try {
-      const doc = createMoonPdf();
+      const doc = createRavinPdf();
       const lowStockProducts = filteredProducts.filter((p) => p.quantity < 10 && p.quantity > 0);
       const outOfStockProducts = filteredProducts.filter((p) => p.quantity === 0);
-      let y = drawMoonHeader(
+      let y = drawRavinHeader(
         doc,
-        'MOON Products Report',
+        'Products Report',
         new Date().toLocaleDateString('en-EG'),
         'Store stock overview'
       );
-      y = drawMoonStatStrip(
+      y = drawRavinStatStrip(
         doc,
         [
           { label: 'Products', value: String(filteredProducts.length) },
@@ -279,7 +279,7 @@ const ProductTable = ({
         ],
         y
       );
-      y = drawMoonSectionTitle(doc, 'Store List', y);
+      y = drawRavinSectionTitle(doc, 'Store List', y);
 
       const tableData = filteredProducts.map((product) => [
         product.name,
@@ -292,7 +292,7 @@ const ProductTable = ({
       ]);
 
       autoTable(doc, {
-        ...moonTableTheme,
+        ...ravinTableTheme,
         head: [['Product', 'Barcode', 'Category', 'Size', 'Price', 'Qty', 'Status']],
         body: tableData,
         startY: y,
@@ -306,16 +306,16 @@ const ProductTable = ({
             const product = filteredProducts[data.row.index];
             if (product.quantity === 0) {
               data.cell.styles.fillColor = [254, 242, 242];
-              data.cell.styles.textColor = [...moonPdfColors.red];
+              data.cell.styles.textColor = [...ravinPdfColors.red];
             } else if (product.quantity < 10) {
               data.cell.styles.fillColor = [255, 247, 237];
-              data.cell.styles.textColor = [...moonPdfColors.amber];
+              data.cell.styles.textColor = [...ravinPdfColors.amber];
             }
           }
         },
       });
 
-      const filename = `Moon_Products_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+      const filename = `Ravin_Products_Report_${new Date().toISOString().split('T')[0]}.pdf`;
       doc.save(filename);
 
       toast({
@@ -447,7 +447,7 @@ const ProductTable = ({
                   setIsAddProductOpen(true);
                   setSimilarProductTemplate(null);
                 }}
-                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
+                className="flex items-center gap-2 bg-neutral-900 hover:bg-black text-white"
               >
                 <Plus className="h-4 w-4" />
                 إضافة منتج
@@ -514,7 +514,7 @@ const ProductTable = ({
                       e.stopPropagation();
                       handleEdit(product);
                     }}
-                    className="text-indigo-600 hover:text-indigo-900"
+                    className="text-neutral-800 hover:text-brand-600"
                     title="تعديل المنتج"
                   >
                     <Edit className="w-4 h-4" />
@@ -629,7 +629,7 @@ const ProductTable = ({
                             e.stopPropagation();
                             handleEdit(product);
                           }}
-                          className="text-indigo-600 hover:text-indigo-900"
+                          className="text-neutral-800 hover:text-brand-600"
                           title="تعديل المنتج"
                         >
                           <Edit className="w-4 h-4" />

@@ -19,6 +19,18 @@ export default {
 		},
 		extend: {
 			colors: {
+				// Ravin logo red (#FF3300) and tints.
+				brand: {
+					DEFAULT: '#ff3300',
+					50: '#fff4f0',
+					100: '#ffe4db',
+					200: '#ffc8b5',
+					500: '#ff3300',
+					600: '#e62e00',
+					700: '#b82500',
+					800: '#8f1d00',
+					900: '#661500'
+				},
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
 				ring: 'hsl(var(--ring))',

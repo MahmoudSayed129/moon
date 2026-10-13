@@ -6,12 +6,12 @@ import { Input } from '@/components/ui/input';
 import * as XLSX from 'xlsx';
 import autoTable from 'jspdf-autotable';
 import {
-  createMoonPdf,
-  drawMoonHeader,
-  drawMoonSectionTitle,
-  drawMoonStatStrip,
-  moonPdfColors,
-  moonTableTheme,
+  createRavinPdf,
+  drawRavinHeader,
+  drawRavinSectionTitle,
+  drawRavinStatStrip,
+  ravinPdfColors,
+  ravinTableTheme,
 } from '@/lib/pdf-theme';
 
 interface HistoryTabProps {
@@ -113,7 +113,7 @@ const HistoryTab = ({ history }: HistoryTabProps) => {
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, 'History');
 
-      let filename = 'Moon_History_Report_';
+      let filename = 'Ravin_History_Report_';
       if (operationFilter !== 'all') {
         filename += `${operationFilter}_`;
       }
@@ -134,18 +134,18 @@ const HistoryTab = ({ history }: HistoryTabProps) => {
   const generatePDFReport = () => {
     try {
       const reportRows = getReportData();
-      const doc = createMoonPdf();
+      const doc = createRavinPdf();
       const subtitle =
         operationFilter !== 'all'
           ? `Filtered by ${operationFilter.toUpperCase()}`
           : 'Store movements overview';
-      let yPosition = drawMoonHeader(
+      let yPosition = drawRavinHeader(
         doc,
-        'MOON Store History',
+        'Stock Movement History',
         new Date().toLocaleDateString('en-EG'),
         subtitle
       );
-      yPosition = drawMoonStatStrip(
+      yPosition = drawRavinStatStrip(
         doc,
         [
           { label: 'Entries', value: String(reportRows.length) },
@@ -171,7 +171,7 @@ const HistoryTab = ({ history }: HistoryTabProps) => {
         ],
         yPosition
       );
-      yPosition = drawMoonSectionTitle(doc, 'Movement Log', yPosition);
+      yPosition = drawRavinSectionTitle(doc, 'Movement Log', yPosition);
 
       const tableData = reportRows.map((entry) => [
         entry.productName,
@@ -184,7 +184,7 @@ const HistoryTab = ({ history }: HistoryTabProps) => {
       ]);
 
       autoTable(doc, {
-        ...moonTableTheme,
+        ...ravinTableTheme,
         head: [['Product', 'Barcode', 'Location', 'Operation', 'Qty', 'Date', 'Time']],
         body: tableData,
         startY: yPosition,
@@ -193,22 +193,22 @@ const HistoryTab = ({ history }: HistoryTabProps) => {
             const entry = reportRows[data.row.index];
             if (entry.operation === 'add') {
               data.cell.styles.fillColor = [236, 253, 245];
-              data.cell.styles.textColor = [...moonPdfColors.emerald];
+              data.cell.styles.textColor = [...ravinPdfColors.emerald];
             } else if (entry.operation === 'take') {
               data.cell.styles.fillColor = [255, 247, 237];
-              data.cell.styles.textColor = [...moonPdfColors.amber];
+              data.cell.styles.textColor = [...ravinPdfColors.amber];
             } else if (entry.operation === 'remove') {
               data.cell.styles.fillColor = [254, 242, 242];
-              data.cell.styles.textColor = [...moonPdfColors.red];
+              data.cell.styles.textColor = [...ravinPdfColors.red];
             } else if (entry.operation === 'return') {
               data.cell.styles.fillColor = [239, 246, 255];
-              data.cell.styles.textColor = [...moonPdfColors.blue];
+              data.cell.styles.textColor = [...ravinPdfColors.blue];
             }
           }
         },
       });
 
-      let filename = 'Moon_History_Report_';
+      let filename = 'Ravin_History_Report_';
       if (operationFilter !== 'all') {
         filename += `${operationFilter}_`;
       }
@@ -272,23 +272,23 @@ const HistoryTab = ({ history }: HistoryTabProps) => {
         </div>
       </div>
 
-      <div className="bg-purple-50 p-4 rounded-lg">
+      <div className="bg-brand-50 p-4 rounded-lg">
         <div className="space-y-4">
-          <h3 className="text-sm font-medium text-purple-800">فترة التقرير</h3>
+          <h3 className="text-sm font-medium text-brand-800">فترة التقرير</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-purple-700 mb-2">
+              <label className="block text-sm font-medium text-brand-700 mb-2">
                 من تاريخ (لو يوم واحد بس، اختار البداية فقط)
               </label>
               <Input
                 type="date"
                 value={reportStartDate}
                 onChange={(e) => setReportStartDate(e.target.value)}
-                className="border-purple-200 focus:ring-purple-500 focus:border-purple-500"
+                className="border-brand-200 focus:ring-brand-500 focus:border-brand-500"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-purple-700 mb-2">
+              <label className="block text-sm font-medium text-brand-700 mb-2">
                 إلى تاريخ (اختياري - لفترة)
               </label>
               <Input
@@ -297,14 +297,14 @@ const HistoryTab = ({ history }: HistoryTabProps) => {
                 onChange={(e) => setReportEndDate(e.target.value)}
                 disabled={!reportStartDate}
                 min={reportStartDate}
-                className="border-purple-200 focus:ring-purple-500 focus:border-purple-500 disabled:bg-gray-100"
+                className="border-brand-200 focus:ring-brand-500 focus:border-brand-500 disabled:bg-gray-100"
               />
             </div>
             <div className="flex items-end">
               <Button
                 onClick={resetDateRange}
                 variant="outline"
-                className="border-purple-200 text-purple-700 hover:bg-purple-100"
+                className="border-brand-200 text-brand-700 hover:bg-brand-100"
               >
                 مسح التواريخ
               </Button>
@@ -312,7 +312,7 @@ const HistoryTab = ({ history }: HistoryTabProps) => {
           </div>
           {(reportStartDate || reportEndDate) && (
             <div className="mt-4">
-              <p className="text-sm text-purple-600">
+              <p className="text-sm text-brand-600">
                 التقرير هيشمل {getReportData().length} حركة
                 {reportStartDate && reportEndDate ? (
                   <span>
@@ -458,7 +458,7 @@ const HistoryTab = ({ history }: HistoryTabProps) => {
                   <span
                     className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                       entry.location === 'warehouse'
-                        ? 'text-purple-800 bg-purple-100'
+                        ? 'text-white bg-neutral-800'
                         : 'text-slate-800 bg-slate-100'
                     }`}
                   >

@@ -222,7 +222,7 @@ const ProductDetailsModal = ({
                   onEdit(product);
                   onClose();
                 }}
-                className="bg-indigo-600 text-white px-6 py-2 rounded-md flex items-center gap-2 hover:bg-indigo-700"
+                className="bg-neutral-900 text-white px-6 py-2 rounded-md flex items-center gap-2 hover:bg-black"
               >
                 <Edit className="w-4 h-4" />
                 <span>تعديل المنتج</span>

@@ -587,9 +587,9 @@ const CheckoutTab = ({ products, onCheckout }: CheckoutTabProps) => {
             ))}
 
             {/* --- Offers container --- */}
-            <div className="rounded-xl border border-dashed border-purple-200 bg-purple-50/60 p-4">
+            <div className="rounded-xl border border-dashed border-brand-200 bg-brand-50/60 p-4">
               <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 text-purple-900">
+                <div className="flex items-center gap-2 text-brand-900">
                   <BadgePercent className="h-4 w-4" />
                   <div className="font-semibold">العروض والخصومات</div>
                 </div>
@@ -597,7 +597,7 @@ const CheckoutTab = ({ products, onCheckout }: CheckoutTabProps) => {
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="border-purple-200 text-purple-700 hover:bg-purple-100"
+                  className="border-brand-200 text-brand-700 hover:bg-brand-100"
                   onClick={() => {
                     setDraftOffer({ kind: 'invoice-percent', percent: '10' });
                     setIsOfferDialogOpen(true);
@@ -608,7 +608,7 @@ const CheckoutTab = ({ products, onCheckout }: CheckoutTabProps) => {
                 </Button>
               </div>
               {offers.length === 0 ? (
-                <p className="mt-3 text-xs text-purple-700/80">
+                <p className="mt-3 text-xs text-brand-700/80">
                   مفيش عروض متطبقة. اضغط "إضافة عرض" لو الفاتورة عليها خصم.
                 </p>
               ) : (
@@ -624,7 +624,7 @@ const CheckoutTab = ({ products, onCheckout }: CheckoutTabProps) => {
                       >
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-                            <Tag className="h-3.5 w-3.5 text-purple-600" />
+                            <Tag className="h-3.5 w-3.5 text-brand-600" />
                             <span className="truncate">{describeOffer(offer)}</span>
                           </div>
                           {info.discount > 0 ? (

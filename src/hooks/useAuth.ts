@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { select, UserRow } from '@/lib/local-db';
 import { User, AuthState } from '@/types/auth';
 
-const SESSION_KEY = 'moon-demo-session';
+const SESSION_KEY = 'ravin-demo-session';
 
 const AuthContext = createContext<{
   authState: AuthState;

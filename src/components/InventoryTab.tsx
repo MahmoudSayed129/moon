@@ -182,7 +182,7 @@ const InventoryTab = ({
           {!isReadOnly && (
             <Button
               onClick={() => setIsAddProductOpen(true)}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              className="bg-neutral-900 hover:bg-black text-white"
             >
               <PackagePlus className="h-4 w-4" />
               إضافة منتج جديد
@@ -284,7 +284,7 @@ const InventoryTab = ({
                     size="sm"
                     onClick={() => openDialog('move', p)}
                     disabled={p.warehouseQuantity === 0}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                    className="bg-neutral-900 hover:bg-black text-white"
                   >
                     <ArrowLeftRight className="h-4 w-4" />
                     للمحل
@@ -360,7 +360,7 @@ const InventoryTab = ({
                         <button
                           onClick={() => openDialog('move', p)}
                           disabled={p.warehouseQuantity === 0}
-                          className="text-indigo-600 hover:text-indigo-800 disabled:opacity-40"
+                          className="text-neutral-800 hover:text-brand-600 disabled:opacity-40"
                           title="نقل للمحل"
                         >
                           <ArrowLeftRight className="h-4 w-4" />

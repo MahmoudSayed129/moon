@@ -6,33 +6,34 @@
 
 @layer base {
   :root {
-    --background: 280 45% 98%;
-    --foreground: 278 46% 13%;
+    --background: 0 0% 98%;
+    --foreground: 0 0% 9%;
 
     --card: 0 0% 100%;
-    --card-foreground: 278 46% 13%;
+    --card-foreground: 0 0% 9%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 278 46% 13%;
+    --popover-foreground: 0 0% 9%;
 
-    --primary: 277 73% 46%;
+    /* Ravin: black primary, logo red (#FF3300) for focus + accents */
+    --primary: 0 0% 9%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 275 55% 95%;
-    --secondary-foreground: 278 46% 18%;
+    --secondary: 0 0% 95%;
+    --secondary-foreground: 0 0% 12%;
 
-    --muted: 279 40% 95%;
-    --muted-foreground: 278 14% 41%;
+    --muted: 0 0% 95%;
+    --muted-foreground: 0 0% 40%;
 
-    --accent: 282 64% 92%;
-    --accent-foreground: 278 46% 18%;
+    --accent: 12 100% 96%;
+    --accent-foreground: 12 100% 30%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 276 36% 86%;
-    --input: 276 36% 86%;
-    --ring: 277 73% 46%;
+    --border: 0 0% 88%;
+    --input: 0 0% 88%;
+    --ring: 12 100% 50%;
 
     --radius: 0.5rem;
 
@@ -98,8 +99,8 @@
     @apply bg-background text-foreground;
     font-family: 'Cairo', 'Segoe UI', 'Tahoma', system-ui, -apple-system, sans-serif;
     background-image:
-      radial-gradient(circle at top, rgba(143, 76, 214, 0.12), transparent 30%),
-      linear-gradient(180deg, #fcf9ff 0%, #f7f1fd 100%);
+      radial-gradient(circle at top, rgba(255, 51, 0, 0.05), transparent 30%),
+      linear-gradient(180deg, #fafafa 0%, #f3f3f3 100%);
   }
 
   /* Latin/numeric content stays LTR for readability (barcodes, prices, emails, invoice numbers) */

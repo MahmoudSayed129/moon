@@ -1,6 +1,6 @@
-# Moon Store — demo
+# Ravin Store — demo
 
-Store management app for Moon Store (inventory, warehouse, point of sale,
+Store management app for Ravin (inventory, warehouse, point of sale,
 invoices & returns, clients, employees and commissions), in Arabic.
 
 This version is **for demonstration only**: there is no database or backend.

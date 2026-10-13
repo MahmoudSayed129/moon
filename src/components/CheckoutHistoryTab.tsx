@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { openInvoicePdf } from '@/lib/invoice';
 import { formatEGP } from '@/lib/currency';
-import { createMoonPdf, drawMoonHeader, drawMoonSectionTitle, drawMoonStatStrip, moonTableTheme } from '@/lib/pdf-theme';
+import { createRavinPdf, drawRavinHeader, drawRavinSectionTitle, drawRavinStatStrip, ravinTableTheme } from '@/lib/pdf-theme';
 import type { ProcessReturnPayload } from '@/types';
 
 const getCurrentMonth = () => new Date().toISOString().slice(0, 7);
@@ -177,18 +177,18 @@ const CheckoutHistoryTab = ({ onProcessReturn }: CheckoutHistoryTabProps) => {
     const worksheet = XLSX.utils.json_to_sheet(rows);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Checkout History');
-    XLSX.writeFile(workbook, `Moon_Checkout_History_${selectedMonth}.xlsx`);
+    XLSX.writeFile(workbook, `Ravin_Checkout_History_${selectedMonth}.xlsx`);
   };
 
   const exportPdf = () => {
-    const doc = createMoonPdf();
-    let y = drawMoonHeader(
+    const doc = createRavinPdf();
+    let y = drawRavinHeader(
       doc,
-      'MOON Checkout History',
+      'Checkout History',
       selectedMonth,
       'Monthly sales and returns report'
     );
-    y = drawMoonStatStrip(
+    y = drawRavinStatStrip(
       doc,
       [
         { label: 'Orders', value: String(stats.ordersCount) },
@@ -200,10 +200,10 @@ const CheckoutHistoryTab = ({ onProcessReturn }: CheckoutHistoryTabProps) => {
       ],
       y
     );
-    y = drawMoonSectionTitle(doc, 'Invoices', y);
+    y = drawRavinSectionTitle(doc, 'Invoices', y);
 
     autoTable(doc, {
-      ...moonTableTheme,
+      ...ravinTableTheme,
       startY: y,
       head: [['Invoice', 'Date', 'Client', 'Status', 'Returned', 'Net Total']],
       body: filteredOrders.map((order) => [
@@ -220,7 +220,7 @@ const CheckoutHistoryTab = ({ onProcessReturn }: CheckoutHistoryTabProps) => {
       },
     });
 
-    doc.save(`Moon_Checkout_History_${selectedMonth}.pdf`);
+    doc.save(`Ravin_Checkout_History_${selectedMonth}.pdf`);
   };
 
   const openReturnDialog = (orderId: string) => {

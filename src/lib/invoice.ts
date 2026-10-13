@@ -7,15 +7,16 @@ import {
 } from '@zxing/library';
 import { formatEGPForPdf } from './currency';
 import {
-  createMoonPdf,
-  drawMoonHeader,
-  drawMoonMetaGrid,
-  drawMoonNotesBox,
-  drawMoonSectionTitle,
-  drawMoonStatStrip,
-  moonPdfColors,
-  moonTableTheme,
+  createRavinPdf,
+  drawRavinHeader,
+  drawRavinMetaGrid,
+  drawRavinNotesBox,
+  drawRavinSectionTitle,
+  drawRavinStatStrip,
+  ravinPdfColors,
+  ravinTableTheme,
 } from './pdf-theme';
+import { RAVIN_LOGO_LIGHT_PNG, RAVIN_LOGO_RATIO } from './ravin-logo';
 
 interface InvoiceItem {
   productName: string;
@@ -204,17 +205,17 @@ const drawCode128Barcode = (
 };
 
 export const buildInvoicePdf = (payload: InvoicePayload) => {
-  const doc = createMoonPdf();
+  const doc = createRavinPdf();
   const hasReturns = (payload.returnedTotalAmount || 0) > 0;
 
-  let y = drawMoonHeader(
+  let y = drawRavinHeader(
     doc,
-    'MOON Store Invoice',
+    'Store Invoice',
     payload.invoiceNumber,
     hasReturns ? 'Sales receipt with return summary' : 'Sales receipt'
   );
 
-  y = drawMoonMetaGrid(
+  y = drawRavinMetaGrid(
     doc,
     [
       `Issued: ${new Date(payload.createdAt).toLocaleString()}`,
@@ -232,7 +233,7 @@ export const buildInvoicePdf = (payload: InvoicePayload) => {
   );
 
   const hasDiscount = (payload.discountAmount || 0) > 0;
-  y = drawMoonStatStrip(
+  y = drawRavinStatStrip(
     doc,
     [
       { label: 'Subtotal', value: money(payload.subtotal) },
@@ -255,10 +256,10 @@ export const buildInvoicePdf = (payload: InvoicePayload) => {
     y
   );
 
-  y = drawMoonSectionTitle(doc, 'Items', y);
+  y = drawRavinSectionTitle(doc, 'Items', y);
 
   autoTable(doc, {
-    ...moonTableTheme,
+    ...ravinTableTheme,
     startY: y,
     head: [['Code', 'Item', 'Qty', 'Returned', 'Net Qty', 'Unit', 'Line Total']],
     body: payload.items.map((item) => [
@@ -284,23 +285,23 @@ export const buildInvoicePdf = (payload: InvoicePayload) => {
   y = ((doc as any).lastAutoTable?.finalY || y) + 8;
 
   if (payload.notes) {
-    y = drawMoonNotesBox(doc, payload.notes, y);
+    y = drawRavinNotesBox(doc, payload.notes, y);
   }
 
   if (hasReturns) {
-    y = drawMoonSectionTitle(
+    y = drawRavinSectionTitle(
       doc,
       `Return Summary${payload.returnStatus ? ` · ${payload.returnStatus.toUpperCase()}` : ''}`,
       y
     );
 
     autoTable(doc, {
-      ...moonTableTheme,
+      ...ravinTableTheme,
       startY: y,
       head: [['Return Date', 'Reason', 'Items', 'Returned Total']],
       headStyles: {
-        ...moonTableTheme.headStyles,
-        fillColor: [...moonPdfColors.accentDark] as [number, number, number],
+        ...ravinTableTheme.headStyles,
+        fillColor: [...ravinPdfColors.accentDark] as [number, number, number],
       },
       body: (payload.returns || []).map((entry) => [
         new Date(entry.createdAt).toLocaleDateString(),
@@ -318,13 +319,13 @@ export const buildInvoicePdf = (payload: InvoicePayload) => {
     y = ((doc as any).lastAutoTable?.finalY || y) + 8;
   }
 
-  doc.setDrawColor(...moonPdfColors.border);
+  doc.setDrawColor(...ravinPdfColors.border);
   doc.line(14, 286, 196, 286);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.5);
-  doc.setTextColor(...moonPdfColors.slate);
-  doc.text('MOON Store - Moon Fashion Suez, Egypt', 14, 291);
-  doc.text('Thank you for shopping with MOON', 196, 291, { align: 'right' });
+  doc.setTextColor(...ravinPdfColors.slate);
+  doc.text('RAVIN Store - Egypt', 14, 291);
+  doc.text('Thank you for shopping with RAVIN', 196, 291, { align: 'right' });
 
   return doc;
 };
@@ -351,15 +352,15 @@ export const buildReceiptPdf = (payload: InvoicePayload) => {
   let y = 6;
 
   // --- Store header band ---------------------------------------------------
-  doc.setFillColor(20, 20, 30);
+  doc.setFillColor(...ravinPdfColors.ink);
   doc.rect(0, 0, 80, 22, 'F');
+  const logoHeight = 6;
+  const logoWidth = logoHeight * RAVIN_LOGO_RATIO;
+  doc.addImage(RAVIN_LOGO_LIGHT_PNG, 'PNG', RECEIPT_CENTER - logoWidth / 2, 4, logoWidth, logoHeight, 'ravin-logo', 'FAST');
   doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(15);
-  doc.text('MOON STORE', RECEIPT_CENTER, 10, { align: 'center' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
-  doc.text('Moon Fashion  ·  Suez, Egypt', RECEIPT_CENTER, 15, { align: 'center' });
+  doc.text('RAVIN Store  ·  Egypt', RECEIPT_CENTER, 15, { align: 'center' });
   doc.text('Sales Receipt', RECEIPT_CENTER, 19, { align: 'center' });
   doc.setTextColor(0, 0, 0);
 
@@ -444,7 +445,7 @@ export const buildReceiptPdf = (payload: InvoicePayload) => {
   }
 
   // Big total in a filled band so it stands out.
-  doc.setFillColor(20, 20, 30);
+  doc.setFillColor(...ravinPdfColors.ink);
   doc.rect(RECEIPT_LEFT, y - 4, RECEIPT_WIDTH, 9, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
